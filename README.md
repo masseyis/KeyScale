@@ -1,16 +1,17 @@
 # KeyScale — Keyboard-Driven Scale-Locked Note Entry for Renoise
 
-**KeyScale** is a Renoise tool designed for **non-musicians, beginners, and anyone who prefers typing over playing**.  
-It turns Renoise’s pattern editor into a **scale-aware, keyboard-friendly composing surface**, letting you:
+**KeyScale** is a Renoise tool designed for **non-musicians, beginners, and anyone who prefers typing over playing**.
+It turns Renoise's pattern editor into a **scale-aware, keyboard-friendly composing surface**, letting you:
 
-- insert notes using simple **QWERTY keyboard shortcuts**  
-- move notes **up/down scale degrees** instead of semitones  
-- shift notes **up/down octaves**  
-- automatically **snap off-scale notes** into the nearest in-scale degree  
-- quickly change the **root note** and **scale** from the keyboard  
+- insert notes using simple **QWERTY keyboard shortcuts**
+- move notes **up/down scale degrees** instead of semitones
+- shift notes **up/down octaves**
+- automatically **snap off-scale notes** into the nearest in-scale degree
+- quickly change the **root note** and **scale** from the keyboard
+- **instantly create chords** across tracks with 13 chord types (triads, 7ths, 9ths, sus, chromatic)
 - work entirely without a MIDI keyboard
 
-It’s the closest thing Renoise has to a **scale lock mode**, built specifically for tracker-style entry and people who *think in keys, not pitches*.
+It's the closest thing Renoise has to a **scale lock mode**, built specifically for tracker-style entry and people who *think in keys, not pitches*.
 
 ---
 
@@ -41,16 +42,32 @@ Instead of semitone steps, move notes by their **scale degree**, keeping them st
 
 Fast octave up/down movement, still scale-locked.
 
-### 🎚️ Velocity support  
+### 🎚️ Velocity support
 
-Inserted notes use Renoise’s **Computer Keyboard Velocity** setting (if enabled), matching standard QWERTY entry behavior.
+Inserted notes use Renoise's **Computer Keyboard Velocity** setting (if enabled), matching standard QWERTY entry behavior.
 
-### 🎼 Root + Scale switching  
+### 🎵 Instant chord creation
+
+Build chords across tracks with a single keypress. Choose from 13 chord types:
+
+**Scale-based chords** (adapt to your current scale):
+- Triad, Seventh, Ninth
+- Sus2, Sus4
+- Add9
+
+**Chromatic chords** (fixed intervals, work in any scale):
+- Major Triad, Minor Triad
+- Diminished Triad, Augmented Triad
+- Dominant 7th, Major 7th, Minor 7th
+
+Cycle through chord types and apply with one keybinding, or bind specific chord types directly.
+
+### 🎼 Root + Scale switching
 
 Choose keys/modes **entirely by keyboard**, via:
 
-- next/previous scale  
-- next/previous root note  
+- next/previous scale (10 scales: all modes + harmonic/melodic minor + pentatonics)
+- next/previous root note
 - status popup showing the current setting  
 
 ---
@@ -69,21 +86,22 @@ Edit -> Preferences -> Keys
 
 Then assign shortcuts you like to:
 
-- **Pattern Editor → KeyScale → Insert Root Note**  
-- **Pattern Editor → KeyScale → Move Up Scale Degree**  
-- **Pattern Editor → KeyScale → Move Down Scale Degree**  
-- **Pattern Editor → KeyScale → Move Up Octave**  
-- **Pattern Editor → KeyScale → Move Down Octave**  
+**Pattern Editor → KeyScale** (note operations):
+- **Insert Root Note**
+- **Move Up Scale Degree**
+- **Move Down Scale Degree**
+- **Move Up Octave**
+- **Move Down Octave**
+- **Chordify Current** ⭐ (applies currently selected chord type)
+- Chordify Triad, Seventh, Ninth, Sus2, Sus4, Add9 (optional: direct chord access)
+- Chordify Major Triad, Minor Triad, etc. (optional: direct chromatic chord access)
 
-And global controls:
+**Global → KeyScale** (settings):
+- **Next Scale** / **Previous Scale** / **Show Current Scale**
+- **Next Root** / **Previous Root**
+- **Next Chord** / **Previous Chord** / **Show Current Chord**
 
-- **Global → KeyScale → Next Scale**  
-- **Global → KeyScale → Previous Scale**  
-- **Global → KeyScale → Next Root**  
-- **Global → KeyScale → Previous Root**  
-- **Global → KeyScale → Show Current Scale**  
-
-Suggested bindings:
+### Suggested bindings:
 
 | Action | Suggested Key |
 |--------|----------------|
@@ -92,10 +110,13 @@ Suggested bindings:
 | Move Up Octave | `Shift + Alt + ↑` |
 | Move Down Octave | `Shift + Alt + ↓` |
 | Insert Root Note | `Ctrl + Enter` |
+| **Chordify Current** | `Ctrl + Shift + Enter` |
 | Next Scale | `Ctrl + Alt + →` |
 | Previous Scale | `Ctrl + Alt + ←` |
 | Next Root | `Ctrl + Alt + ↑` |
 | Previous Root | `Ctrl + Alt + ↓` |
+| Next Chord | `Ctrl + Shift + →` |
+| Previous Chord | `Ctrl + Shift + ←` |
 
 ---
 
@@ -114,11 +135,28 @@ Use this to reshape large melodic patterns while keeping everything in key.
 
 Use the next/previous commands to rotate through:
 
-- Major / Minor / Dorian / Mixolydian  
-- Harmonic Minor  
-- Pentatonics  
+**10 Available Scales:**
+- Major (Ionian)
+- Natural Minor (Aeolian)
+- Dorian
+- Phrygian
+- Lydian
+- Mixolydian
+- Harmonic Minor
+- Melodic Minor
+- Major Pentatonic
+- Minor Pentatonic
 
 All scale-degree and octave actions immediately use the new scale.
+
+### Building chords
+
+**Quick workflow:**
+1. Place cursor on note (or empty cell)
+2. Use **Next/Previous Chord** to select chord type
+3. Press **Chordify Current** to create the chord across tracks
+
+Chords are built starting from the current track, spreading voices to the right. Scale-based chords adapt to your key; chromatic chords use fixed intervals for precise chord qualities (useful for borrowed chords, jazz voicings, or stepping outside the scale).
 
 ---
 
@@ -127,7 +165,10 @@ All scale-degree and octave actions immediately use the new scale.
 - Press **Cmd+U** (macOS) or **Ctrl+U** (Windows/Linux) to clear selections quickly.
 - Use **Fn+Backspace** on a Mac laptop to delete a single note cell.
 - Keep the **volume column visible** if you want keyboard velocity applied.
-- Try building melodies entirely from an empty track using only degree up/down keys — you’ll be surprised how quickly musical shapes appear.
+- Try building melodies entirely from an empty track using only degree up/down keys — you'll be surprised how quickly musical shapes appear.
+- **For chords:** Set up multiple tracks in advance. Chordify spreads notes across consecutive tracks (triad = 3 tracks, 7th = 4 tracks, etc.)
+- **Chromatic chords** let you insert exact chord qualities (major, minor, diminished) regardless of your scale — perfect for borrowing chords from parallel keys or adding color outside the scale.
+- Use **Show Current Chord** to see which chord type is selected if you forget while cycling through options.
 
 ---
 
@@ -137,13 +178,13 @@ Renoise is amazing for fast composition, but for many users — especially peopl
 
 **KeyScale bridges that gap**, making Renoise feel more like:
 
-- a **step sequencer**,  
-- a **scale-aware tracker**,  
-- or a **note-safe piano roll**,  
+- a **step sequencer**,
+- a **scale-aware tracker**,
+- or a **note-safe piano roll with instant chord creation**,
 
 all operated entirely from your keyboard.
 
-Whether you’re a non-musician, a programmer-minded composer, or just someone who wants to stay inside the tracker flow, KeyScale lets you work *musically* without touching a MIDI keyboard.
+Whether you're a non-musician, a programmer-minded composer, or just someone who wants to stay inside the tracker flow, KeyScale lets you work *musically* without touching a MIDI keyboard. Build melodies by scale degree, harmonize them instantly with chromatic or diatonic chords, and experiment freely knowing you'll stay in key (unless you deliberately choose to step outside it).
 
 ---
 
