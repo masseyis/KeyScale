@@ -117,7 +117,7 @@ local function show_status_current_scale()
 end
 
 local function show_status_current_chord()
-	local _, chord_name = get_chord()
+	local _, _, _, chord_name = get_chord()
 	local msg = string.format("KeyScale: Chord Type: %s", chord_name)
 	renoise.app():show_status(msg)
 end
