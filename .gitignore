@@ -3,3 +3,9 @@
 
 # Claude Code
 .claude/
+
+# Build output
+com.penchi.KeyScale.xrnx
+
+# User preferences
+preferences.xml
