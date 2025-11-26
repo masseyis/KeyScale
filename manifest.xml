@@ -9,6 +9,7 @@
   <Description>Keyboard editing in scale</Description>
   <ThumbnailPath>thumbnail.png</ThumbnailPath>
   <Donate>http://ko-fi.com/masseyis</Donate>
+  <Repository>https://github.com/masseyis/KeyScale</Repository>
   <CoverPath>cover.png</CoverPath>
   <License>MIT</License>
  </RenoiseScriptingTool>
