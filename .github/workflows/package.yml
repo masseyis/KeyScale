@@ -1,0 +1,58 @@
+name: Package KeyScale
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up build variables
+        run: |
+          PACKAGE_NAME=com.penchi.KeyScale
+          TIMESTAMP=$(date +'%Y-%m-%d_%H-%M-%S')
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            TAG_NAME="${{ github.ref_name }}"
+          else
+            TAG_NAME="$TIMESTAMP"
+          fi
+          echo "TAG_NAME=$TAG_NAME" >> $GITHUB_ENV
+          echo "FILENAME=${PACKAGE_NAME}_${TAG_NAME}.xrnx" >> $GITHUB_ENV
+          echo "PACKAGE_NAME=$PACKAGE_NAME" >> $GITHUB_ENV
+
+      - name: Build xrnx package
+        run: |
+          chmod +x build.sh
+          ./build.sh
+
+      - name: Rename package with version
+        run: |
+          mv "${PACKAGE_NAME}.xrnx" "${{ env.FILENAME }}"
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ env.TAG_NAME }}
+          release_name: Release ${{ env.TAG_NAME }}
+          draft: false
+          prerelease: false
+
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ${{ env.FILENAME }}
+          asset_name: ${{ env.FILENAME }}
+          asset_content_type: application/zip
