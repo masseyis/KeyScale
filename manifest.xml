@@ -2,11 +2,11 @@
 <RenoiseScriptingTool doc_version="0">
   <ApiVersion>6</ApiVersion>
   <Id>com.penchi.KeyScale</Id>
-  <Version>0.59999999999999998</Version>
+  <Version>0.7</Version>
   <Author>James Massey  | james@penchi.co.uk</Author>
   <Name>KeyScale</Name>
   <Category>Pattern</Category>
-  <Description>Keyboard editing in scale</Description>
+  <Description>Kayboard note editing and chord input within a scale</Description>
   <ThumbnailPath>thumbnail.png</ThumbnailPath>
   <Donate>http://ko-fi.com/masseyis</Donate>
   <Repository>https://github.com/masseyis/KeyScale</Repository>

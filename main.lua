@@ -45,6 +45,7 @@ local CHORD_TYPES = {
 local DEFAULT_ROOT_NOTE = 48 -- C-4
 local DEFAULT_SCALE_INDEX = 2 -- Natural Minor
 local DEFAULT_CHORD_INDEX = 1 -- Triad
+local DEFAULT_INVERSION = 0 -- Root position (0 = root, 1 = 1st inv, 2 = 2nd inv, etc.)
 
 ------------------------------------------------------------
 -- Preferences (root + scale + chord, persisted across sessions)
@@ -54,6 +55,7 @@ local KeyScalePrefs = renoise.Document.create("KeyScalePreferences")({
 	root_note_value = DEFAULT_ROOT_NOTE,
 	scale_index = DEFAULT_SCALE_INDEX,
 	chord_index = DEFAULT_CHORD_INDEX,
+	inversion_index = DEFAULT_INVERSION,
 })
 
 renoise.tool().preferences = KeyScalePrefs
@@ -83,6 +85,20 @@ local function get_chord()
 	end
 	local chord = CHORD_TYPES[idx]
 	return chord.degrees, chord.semitones, chord.chromatic, chord.name
+end
+
+local function get_inversion()
+	return KeyScalePrefs.inversion_index.value
+end
+
+-- Get the maximum valid inversion for the current chord type
+local function get_max_inversion()
+	local degrees, semitones, chromatic, _ = get_chord()
+	local intervals = chromatic and semitones or degrees
+	if intervals then
+		return #intervals -- Max inversion = number of upper voices
+	end
+	return 0
 end
 
 local NOTE_NAMES = {
@@ -119,6 +135,17 @@ end
 local function show_status_current_chord()
 	local _, _, _, chord_name = get_chord()
 	local msg = string.format("KeyScale: Chord Type: %s", chord_name)
+	renoise.app():show_status(msg)
+end
+
+local INVERSION_NAMES = { "Root", "1st", "2nd", "3rd", "4th" }
+
+local function show_status_current_inversion()
+	local inv = get_inversion()
+	local max_inv = get_max_inversion()
+	local inv_name = INVERSION_NAMES[inv + 1] or tostring(inv)
+	local _, _, _, chord_name = get_chord()
+	local msg = string.format("KeyScale: %s - %s Inversion (%d/%d)", chord_name, inv_name, inv, max_inv)
 	renoise.app():show_status(msg)
 end
 
@@ -320,6 +347,34 @@ end
 -- Chordify helpers
 ------------------------------------------------------------
 
+-- Apply inversion to an array of note values.
+-- Inversion rotates which note is in bass and raises lower notes by octave.
+-- e.g. [C, E, G] with inv=1 -> [E, G, C+12]
+local function apply_inversion(notes, inversion)
+	if inversion == 0 or #notes < 2 then
+		return notes
+	end
+
+	local inv = inversion % #notes
+	local result = {}
+
+	-- Rotate the notes
+	for i = 1, #notes do
+		local idx = ((i - 1 + inv) % #notes) + 1
+		result[i] = notes[idx]
+	end
+
+	-- Raise notes that are now lower than the new bass
+	local bass = result[1]
+	for i = 2, #result do
+		while result[i] < bass do
+			result[i] = result[i] + 12
+		end
+	end
+
+	return result
+end
+
 -- Place extra chord tones on following tracks, sharing instrument/velocity.
 -- degree_offsets: list of scale-degree offsets *above the bass degree*
 --   e.g. {2, 4}  -> triad (3rd & 5th)
@@ -340,13 +395,21 @@ local function chordify_on_tracks(degree_offsets)
 	if not oct then
 		return
 	end
-	bass_note.note_value = scale_degree_to_note(oct, deg)
+
+	-- Build array of all chord note values
+	local chord_notes = { scale_degree_to_note(oct, deg) }
+	for _, deg_off in ipairs(degree_offsets) do
+		table.insert(chord_notes, scale_degree_to_note(oct, deg + deg_off))
+	end
+
+	-- Apply inversion
+	local inversion = get_inversion()
+	chord_notes = apply_inversion(chord_notes, inversion)
 
 	-- Ensure instrument is set
 	local instr = bass_note.instrument_value
 	if instr == renoise.PatternLine.EMPTY_INSTRUMENT then
 		instr = song.selected_instrument_index - 1
-		bass_note.instrument_value = instr
 	end
 
 	local base_vol = bass_note.volume_value
@@ -365,18 +428,18 @@ local function chordify_on_tracks(degree_offsets)
 		return renoise.PatternLine.EMPTY_VOLUME
 	end
 
-	for i, deg_off in ipairs(degree_offsets) do
-		local target_track_index = base_track + i -- +1, +2, +3...
+	-- Place all chord notes (including bass which may have changed due to inversion)
+	for i, note_value in ipairs(chord_notes) do
+		local target_track_index = base_track + (i - 1)
 		if target_track_index > #song.tracks then
-			-- Not enough tracks to place this voice; stop quietly.
 			break
 		end
 
 		local track = patt:track(target_track_index)
 		local line = track:line(line_index)
-		local note = line.note_columns[1] -- first column on that track
+		local note = line.note_columns[1]
 
-		note.note_value = scale_degree_to_note(oct, deg + deg_off)
+		note.note_value = note_value
 		note.instrument_value = instr
 
 		local vol = volume_for_track(target_track_index)
@@ -400,11 +463,27 @@ local function chordify_chromatic(semitone_offsets)
 
 	local bass_value = bass_note.note_value
 
+	-- Build array of all chord note values
+	local chord_notes = { bass_value }
+	for _, semitones in ipairs(semitone_offsets) do
+		local new_note = bass_value + semitones
+		if new_note < 0 then
+			new_note = 0
+		end
+		if new_note > 119 then
+			new_note = 119
+		end
+		table.insert(chord_notes, new_note)
+	end
+
+	-- Apply inversion
+	local inversion = get_inversion()
+	chord_notes = apply_inversion(chord_notes, inversion)
+
 	-- Ensure instrument is set
 	local instr = bass_note.instrument_value
 	if instr == renoise.PatternLine.EMPTY_INSTRUMENT then
 		instr = song.selected_instrument_index - 1
-		bass_note.instrument_value = instr
 	end
 
 	local base_vol = bass_note.volume_value
@@ -423,8 +502,9 @@ local function chordify_chromatic(semitone_offsets)
 		return renoise.PatternLine.EMPTY_VOLUME
 	end
 
-	for i, semitones in ipairs(semitone_offsets) do
-		local target_track_index = base_track + i
+	-- Place all chord notes (including bass which may have changed due to inversion)
+	for i, note_value in ipairs(chord_notes) do
+		local target_track_index = base_track + (i - 1)
 		if target_track_index > #song.tracks then
 			break
 		end
@@ -433,15 +513,15 @@ local function chordify_chromatic(semitone_offsets)
 		local line = track:line(line_index)
 		local note = line.note_columns[1]
 
-		local new_note = bass_value + semitones
-		if new_note < 0 then
-			new_note = 0
+		-- Clamp to valid range
+		if note_value < 0 then
+			note_value = 0
 		end
-		if new_note > 119 then
-			new_note = 119
+		if note_value > 119 then
+			note_value = 119
 		end
 
-		note.note_value = new_note
+		note.note_value = note_value
 		note.instrument_value = instr
 
 		local vol = volume_for_track(target_track_index)
@@ -557,6 +637,30 @@ local function show_current_chord()
 	show_status_current_chord()
 end
 
+local function next_inversion()
+	local max_inv = get_max_inversion()
+	local inv = KeyScalePrefs.inversion_index.value + 1
+	if inv > max_inv then
+		inv = 0
+	end
+	KeyScalePrefs.inversion_index.value = inv
+	show_status_current_inversion()
+end
+
+local function prev_inversion()
+	local max_inv = get_max_inversion()
+	local inv = KeyScalePrefs.inversion_index.value - 1
+	if inv < 0 then
+		inv = max_inv
+	end
+	KeyScalePrefs.inversion_index.value = inv
+	show_status_current_inversion()
+end
+
+local function show_current_inversion()
+	show_status_current_inversion()
+end
+
 ------------------------------------------------------------
 -- Register keybindings
 ------------------------------------------------------------
@@ -659,4 +763,19 @@ renoise.tool():add_keybinding({
 renoise.tool():add_keybinding({
 	name = "Global:KeyScale:Show Current Scale",
 	invoke = show_current_scale,
+})
+
+renoise.tool():add_keybinding({
+	name = "Global:KeyScale:Next Inversion",
+	invoke = next_inversion,
+})
+
+renoise.tool():add_keybinding({
+	name = "Global:KeyScale:Previous Inversion",
+	invoke = prev_inversion,
+})
+
+renoise.tool():add_keybinding({
+	name = "Global:KeyScale:Show Current Inversion",
+	invoke = show_current_inversion,
 })
