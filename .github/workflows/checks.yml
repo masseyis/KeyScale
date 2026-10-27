@@ -1,0 +1,55 @@
+name: PR checks
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: checks-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lua:
+    name: Lua checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install Lua 5.1 and Luacheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes lua5.1 lua-check
+      - name: Check Lua 5.1 syntax
+        run: find . -name '*.lua' -not -path './.git/*' -exec luac5.1 -p {} +
+      - name: Lint Lua
+        run: luacheck main.lua tests
+      - name: Run regression tests
+        run: |
+          lua5.1 tests/chord_track_boundaries.lua
+          lua5.1 tests/note_and_chord_behaviour.lua
+
+  package:
+    name: Package check
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes shellcheck zip unzip
+      - name: Lint build script
+        run: shellcheck build.sh
+      - name: Build and verify Renoise package
+        run: python3 tests/check_package.py
