@@ -56,6 +56,7 @@ local KeyScalePrefs = renoise.Document.create("KeyScalePreferences")({
 	scale_index = DEFAULT_SCALE_INDEX,
 	chord_index = DEFAULT_CHORD_INDEX,
 	inversion_index = DEFAULT_INVERSION,
+	same_track = false, -- place chord notes in note columns of the current track
 })
 
 renoise.tool().preferences = KeyScalePrefs
@@ -375,16 +376,87 @@ local function apply_inversion(notes, inversion)
 	return result
 end
 
+-- Write chord note values at the cursor line, sharing instrument/velocity.
+-- By default each note goes into the first note column of consecutive tracks.
+-- With the "Insert notes into same track" option, notes go into consecutive
+-- note columns of the current track instead, starting at the cursor column and
+-- showing more note columns when needed.
+local function place_chord_notes(chord_notes, instr, base_vol)
+	local song = rs()
+	local patt = song:pattern(song.selected_pattern_index)
+	local base_track = song.selected_track_index
+	local line_index = song.selected_line_index
+
+	local function volume_for_track(track_index)
+		local track = song:track(track_index)
+		if not track.volume_column_visible then
+			return renoise.PatternLine.EMPTY_VOLUME
+		end
+		if base_vol ~= renoise.PatternLine.EMPTY_VOLUME then
+			return base_vol
+		end
+		if song.transport.keyboard_velocity_enabled then
+			return song.transport.keyboard_velocity
+		end
+		return renoise.PatternLine.EMPTY_VOLUME
+	end
+
+	local function write_note(note, note_value, track_index)
+		-- Clamp to valid range
+		if note_value < 0 then
+			note_value = 0
+		end
+		if note_value > 119 then
+			note_value = 119
+		end
+
+		note.note_value = note_value
+		note.instrument_value = instr
+
+		local vol = volume_for_track(track_index)
+		if vol ~= renoise.PatternLine.EMPTY_VOLUME then
+			note.volume_value = vol
+		end
+	end
+
+	if KeyScalePrefs.same_track.value then
+		local track = song:track(base_track)
+		local base_col = song.selected_note_column_index
+		local last_col = math.min(base_col + #chord_notes - 1, track.max_note_columns)
+
+		if last_col > track.visible_note_columns then
+			track.visible_note_columns = last_col
+		end
+
+		local line = patt:track(base_track):line(line_index)
+		for i, note_value in ipairs(chord_notes) do
+			local col = base_col + (i - 1)
+			if col > last_col then
+				renoise.app():show_status("KeyScale: Not enough note columns left in this track for the whole chord")
+				break
+			end
+			write_note(line:note_column(col), note_value, base_track)
+		end
+		return
+	end
+
+	for i, note_value in ipairs(chord_notes) do
+		local target_track_index = base_track + (i - 1)
+		if target_track_index > #song.tracks then
+			break
+		end
+
+		local line = patt:track(target_track_index):line(line_index)
+		write_note(line.note_columns[1], note_value, target_track_index)
+	end
+end
+
 -- Place extra chord tones on following tracks, sharing instrument/velocity.
 -- degree_offsets: list of scale-degree offsets *above the bass degree*
 --   e.g. {2, 4}  -> triad (3rd & 5th)
 --        {2, 4, 6} -> 7th chord (3rd, 5th, 7th)
 local function chordify_on_tracks(degree_offsets)
 	local song = rs()
-	local patt = song:pattern(song.selected_pattern_index)
-	local base_track = song.selected_track_index
-	local line_index = song.selected_line_index
-
 	local bass_note = get_or_insert_note_at_cursor()
 	if not bass_note or not is_valid_note(bass_note.note_value) then
 		return
@@ -412,50 +484,13 @@ local function chordify_on_tracks(degree_offsets)
 		instr = song.selected_instrument_index - 1
 	end
 
-	local base_vol = bass_note.volume_value
-
-	local function volume_for_track(track_index)
-		local track = song:track(track_index)
-		if not track.volume_column_visible then
-			return renoise.PatternLine.EMPTY_VOLUME
-		end
-		if base_vol ~= renoise.PatternLine.EMPTY_VOLUME then
-			return base_vol
-		end
-		if song.transport.keyboard_velocity_enabled then
-			return song.transport.keyboard_velocity
-		end
-		return renoise.PatternLine.EMPTY_VOLUME
-	end
-
 	-- Place all chord notes (including bass which may have changed due to inversion)
-	for i, note_value in ipairs(chord_notes) do
-		local target_track_index = base_track + (i - 1)
-		if target_track_index > #song.tracks then
-			break
-		end
-
-		local track = patt:track(target_track_index)
-		local line = track:line(line_index)
-		local note = line.note_columns[1]
-
-		note.note_value = note_value
-		note.instrument_value = instr
-
-		local vol = volume_for_track(target_track_index)
-		if vol ~= renoise.PatternLine.EMPTY_VOLUME then
-			note.volume_value = vol
-		end
-	end
+	place_chord_notes(chord_notes, instr, bass_note.volume_value)
 end
 
 -- Chromatic version: uses fixed semitone intervals from bass note
 local function chordify_chromatic(semitone_offsets)
 	local song = rs()
-	local patt = song:pattern(song.selected_pattern_index)
-	local base_track = song.selected_track_index
-	local line_index = song.selected_line_index
-
 	local bass_note = get_or_insert_note_at_cursor()
 	if not bass_note or not is_valid_note(bass_note.note_value) then
 		return
@@ -486,49 +521,8 @@ local function chordify_chromatic(semitone_offsets)
 		instr = song.selected_instrument_index - 1
 	end
 
-	local base_vol = bass_note.volume_value
-
-	local function volume_for_track(track_index)
-		local track = song:track(track_index)
-		if not track.volume_column_visible then
-			return renoise.PatternLine.EMPTY_VOLUME
-		end
-		if base_vol ~= renoise.PatternLine.EMPTY_VOLUME then
-			return base_vol
-		end
-		if song.transport.keyboard_velocity_enabled then
-			return song.transport.keyboard_velocity
-		end
-		return renoise.PatternLine.EMPTY_VOLUME
-	end
-
 	-- Place all chord notes (including bass which may have changed due to inversion)
-	for i, note_value in ipairs(chord_notes) do
-		local target_track_index = base_track + (i - 1)
-		if target_track_index > #song.tracks then
-			break
-		end
-
-		local track = patt:track(target_track_index)
-		local line = track:line(line_index)
-		local note = line.note_columns[1]
-
-		-- Clamp to valid range
-		if note_value < 0 then
-			note_value = 0
-		end
-		if note_value > 119 then
-			note_value = 119
-		end
-
-		note.note_value = note_value
-		note.instrument_value = instr
-
-		local vol = volume_for_track(target_track_index)
-		if vol ~= renoise.PatternLine.EMPTY_VOLUME then
-			note.volume_value = vol
-		end
-	end
+	place_chord_notes(chord_notes, instr, bass_note.volume_value)
 end
 
 local function chordify_triad()
@@ -660,6 +654,25 @@ end
 local function show_current_inversion()
 	show_status_current_inversion()
 end
+
+------------------------------------------------------------
+-- Register menu entries
+------------------------------------------------------------
+
+renoise.tool():add_menu_entry({
+	name = "Main Menu:Tools:KeyScale:Insert notes into same track",
+	selected = function()
+		return KeyScalePrefs.same_track.value
+	end,
+	invoke = function()
+		KeyScalePrefs.same_track.value = not KeyScalePrefs.same_track.value
+		if KeyScalePrefs.same_track.value then
+			renoise.app():show_status("KeyScale: Chords are inserted into note columns of the current track")
+		else
+			renoise.app():show_status("KeyScale: Chords are inserted across consecutive tracks")
+		end
+	end,
+})
 
 ------------------------------------------------------------
 -- Register keybindings
