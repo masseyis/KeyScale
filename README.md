@@ -76,6 +76,8 @@ Choose keys/modes **entirely by keyboard**, via:
 
 ### 1. Install the Tool  
 
+Download the `.xrnx` installer from the [latest GitHub release](https://github.com/masseyis/KeyScale/releases/latest).
+
 Drop the `.xrnx` into Renoise or install via *Tools → Install*.
 
 ### 2. Bind Your Keys  
