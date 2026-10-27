@@ -157,6 +157,7 @@ All scale-degree and octave actions immediately use the new scale.
 3. Press **Chordify Current** to create the chord across tracks
 
 Chords are built starting from the current track, spreading voices to the right.
+Across-track insertion stops at a master, group, or send track and shows a status message; any chord notes already inserted are kept.
 To keep the whole chord in the current track instead, check **Tools → KeyScale → Insert notes into same track**. Voices then go into the track's note columns, starting at the cursor column, and extra note columns are shown as needed (up to Renoise's 12 per track).
 
 Scale-based chords adapt to your key; chromatic chords use fixed intervals for precise chord qualities (useful for borrowed chords, jazz voicings, or stepping outside the scale).
@@ -188,6 +189,28 @@ Renoise is amazing for fast composition, but for many users — especially peopl
 all operated entirely from your keyboard.
 
 Whether you're a non-musician, a programmer-minded composer, or just someone who wants to stay inside the tracker flow, KeyScale lets you work *musically* without touching a MIDI keyboard. Build melodies by scale degree, harmonize them instantly with chromatic or diatonic chords, and experiment freely knowing you'll stay in key (unless you deliberately choose to step outside it).
+
+---
+
+## Development checks
+
+Pull requests run two GitHub Actions checks:
+
+- **Lua checks:** Lua 5.1 syntax validation, Luacheck, and regression tests for chord placement, track boundaries, all chord types and inversions, note-column limits, instrument/velocity handling, note movement, selections, and settings.
+- **Package check:** ShellCheck for the build script, then an isolated package build that verifies the archive contents, manifest, image references, and current source files.
+
+To run the same checks locally, install Lua 5.1, Luacheck, ShellCheck, Python 3, and zip/unzip, then run from the repository root:
+
+```sh
+find . -name '*.lua' -not -path './.git/*' -exec luac5.1 -p {} +
+luacheck main.lua tests
+lua5.1 tests/chord_track_boundaries.lua
+lua5.1 tests/note_and_chord_behaviour.lua
+shellcheck build.sh
+python3 tests/check_package.py
+```
+
+The Lua tests simulate the Renoise API and invoke the tool's registered commands. They do not verify playback, real menu integration, undo, or preference persistence after restarting Renoise; check those manually before a release. The package check builds in a temporary directory and leaves the local `.xrnx` untouched.
 
 ---
 

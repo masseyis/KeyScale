@@ -446,6 +446,12 @@ local function place_chord_notes(chord_notes, instr, base_vol)
 			break
 		end
 
+		-- Master, group and send tracks cannot contain note columns.
+		if song:track(target_track_index).max_note_columns == 0 then
+			renoise.app():show_status("KeyScale: Chord stopped at a track that cannot contain notes")
+			break
+		end
+
 		local line = patt:track(target_track_index):line(line_index)
 		write_note(line.note_columns[1], note_value, target_track_index)
 	end
