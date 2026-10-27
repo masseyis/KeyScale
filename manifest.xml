@@ -2,7 +2,7 @@
 <RenoiseScriptingTool doc_version="0">
   <ApiVersion>6</ApiVersion>
   <Id>com.penchi.KeyScale</Id>
-  <Version>0.7</Version>
+  <Version>0.8</Version>
   <Author>James Massey  | james@penchi.co.uk</Author>
   <Name>KeyScale</Name>
   <Category>Pattern</Category>
