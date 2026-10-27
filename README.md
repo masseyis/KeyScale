@@ -156,7 +156,10 @@ All scale-degree and octave actions immediately use the new scale.
 2. Use **Next/Previous Chord** to select chord type
 3. Press **Chordify Current** to create the chord across tracks
 
-Chords are built starting from the current track, spreading voices to the right. Scale-based chords adapt to your key; chromatic chords use fixed intervals for precise chord qualities (useful for borrowed chords, jazz voicings, or stepping outside the scale).
+Chords are built starting from the current track, spreading voices to the right.
+To keep the whole chord in the current track instead, check **Tools → KeyScale → Insert notes into same track**. Voices then go into the track's note columns, starting at the cursor column, and extra note columns are shown as needed (up to Renoise's 12 per track).
+
+Scale-based chords adapt to your key; chromatic chords use fixed intervals for precise chord qualities (useful for borrowed chords, jazz voicings, or stepping outside the scale).
 
 ---
 
